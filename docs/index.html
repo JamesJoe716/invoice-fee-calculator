@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#164f43">
+  <meta name="description" content="选择会员和开票方式，输入金额，即时计算开票金额和应补费用。">
+  <link rel="icon" href="data:,">
+  <title>发票费用计算器</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f3f6f3;
+      --ink: #182b26;
+      --muted: #536660;
+      --line: #d7e0da;
+      --accent: #14634e;
+      --mint: #edf6ef;
+      --forest: #164f43;
+      --number: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background: var(--page);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font-size: 1rem; line-height: 1.5; }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; color: inherit; }
+    button:disabled { cursor: default; }
+    button:focus-visible, a:focus-visible, summary:focus-visible {
+      outline: 3px solid #24856d; outline-offset: 3px;
+    }
+    [hidden] { display: none !important; }
+    h1, h2, h3, p, dl, dd { margin: 0; }
+    .wrap { width: min(100% - 3rem, 67rem); margin-inline: auto; }
+    .topbar { background: #fff; border-bottom: 1px solid var(--line); }
+    .topbar .wrap { min-height: 4.25rem; display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: inline-flex; align-items: center; gap: .65rem; font-size: 1.06rem; font-weight: 750; }
+    .brand-mark {
+      width: 2rem; height: 2rem; background: var(--forest); border-radius: .56rem;
+      display: grid; place-items: center;
+    }
+    .slip-icon {
+      position: relative; display: inline-block; width: .89rem; height: 1.12rem;
+      background: #e0f2d2;
+      clip-path: polygon(0 0,100% 0,100% 100%,83% 89%,66% 100%,50% 89%,33% 100%,16% 89%,0 100%);
+    }
+    .slip-icon::before {
+      content: ""; position: absolute; left: 20%; top: 23%; width: 60%; height: 1.5px;
+      background: var(--forest); box-shadow: 0 .23rem var(--forest);
+    }
+    .rules-button {
+      display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+      min-height: 2.75rem; border: 0; border-radius: .4rem; padding: .35rem .3rem;
+      background: transparent; color: var(--muted); font-weight: 600; font-size: .9rem;
+    }
+    .rules-button:hover { color: var(--accent); }
+    .info-icon {
+      display: inline-grid; place-items: center; border: 1.5px solid currentColor; border-radius: 50%;
+      height: 1.03rem; width: 1.03rem; font: 700 .72rem/1 var(--number);
+    }
+    main { padding-top: clamp(1.6rem,4vw,3.15rem); padding-bottom: 3rem; }
+    .intro { margin-bottom: clamp(1.35rem,2.9vw,2.15rem); }
+    h1 { font-size: clamp(2rem,3.2vw,2.8rem); line-height: 1.22; letter-spacing: -.045em; font-weight: 780; }
+    .intro p { margin-top: .5rem; color: var(--muted); font-size: 1rem; }
+    .layout { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 1.5rem; align-items: start; }
+    .entry-panel, .ticket {
+      min-width: 0; background: white; border: 1px solid var(--line); border-radius: 1.15rem;
+      box-shadow: 0 3px 12px rgba(27,59,44,.035);
+    }
+    .entry-panel { padding: clamp(1.25rem,2.65vw,2rem); display: grid; gap: 1.6rem; }
+    fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+    legend, .field-label { font-weight: 720; font-size: 1.05rem; letter-spacing: .01em; }
+    legend { padding: 0; margin-bottom: .73rem; }
+    .plans { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .55rem; }
+    .choice { position: relative; display: block; min-width: 0; cursor: pointer; }
+    .radio {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: 0;
+      overflow: hidden; clip: rect(0,0,0,0); clip-path: inset(50%); white-space: nowrap;
+    }
+    .radio:focus-visible + .option { outline: 3px solid #24856d; outline-offset: 3px; }
+    .option { border: 1px solid var(--line); transition: background-color .12s, border-color .12s; }
+    .choice:hover .option { border-color: #93b2a4; }
+    .radio:checked + .option { background: var(--mint); border-color: #46886f; box-shadow: inset 0 0 0 .5px #46886f; }
+    .plan {
+      position: relative; min-height: 4.45rem; display: flex; flex-direction: column; justify-content: center;
+      padding: .66rem .8rem; border-radius: .68rem; gap: .07rem;
+    }
+    .plan strong { font: 730 1.1rem/1.4 var(--number); letter-spacing: -.025em; }
+    .plan small, .method small { color: var(--muted); font-size: .875rem; }
+    .check {
+      display: none; position: absolute; right: .5rem; top: .5rem; width: .87rem; height: .87rem;
+      background: var(--accent); border-radius: 50%;
+    }
+    .radio:checked + .option .check { display: grid; place-items: center; }
+    .check::before { content: ""; width: .34rem; height: .18rem; border: solid white; border-width: 0 0 1.5px 1.5px; transform: translateY(-.05rem) rotate(-45deg); }
+    .methods { display: grid; gap: .46rem; }
+    .method {
+      display: flex; align-items: center; gap: .8rem; padding: .65rem .85rem;
+      border-radius: .66rem; line-height: 1.38;
+    }
+    .method strong, .method small { display: block; }
+    .method strong { font-size: 1rem; font-weight: 650; }
+    .method small { margin-top: .08rem; }
+    .dot { flex: none; width: 1.05rem; height: 1.05rem; border: 1.5px solid #9daea5; border-radius: 50%; }
+    .radio:checked + .option .dot { border: .31rem solid var(--accent); background: white; }
+    .amount-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .55rem; }
+    .example {
+      color: var(--accent); background: transparent; border: 0; border-radius: .3rem;
+      padding: .25rem .1rem .25rem .35rem; font-size: .875rem; font-weight: 600;
+    }
+    .example:hover { text-decoration: underline; }
+    .amount-box {
+      display: flex; align-items: center; gap: .65rem; padding: 0 1rem; border: 1px solid #aab9af;
+      border-radius: .65rem; background: #fff; font: 600 1.26rem/1.1 var(--number);
+    }
+    .amount-box:focus-within { border-color: var(--accent); outline: 2px solid #a5cbbc; outline-offset: 1px; }
+    .amount-box.invalid { border-color: #a23e32; }
+    input[type=text] { color: var(--ink); background: transparent; border: 0; outline: none; width: 100%; min-width: 0; padding: .78rem 0; font: inherit; font-variant-numeric: tabular-nums; }
+    input::placeholder { color: #84918a; font-weight: 450; }
+    .error { font-size: .875rem; color: #9c3326; margin-top: .42rem; }
+    .ticket { align-self: start; }
+    .ticket-head {
+      position: relative; isolation: isolate; overflow: hidden; background: var(--forest); color: white;
+      padding: 1.4rem clamp(1.3rem,2.5vw,1.9rem) 1.6rem; border-radius: 1.05rem 1.05rem 0 0;
+    }
+    .ticket-head::after {
+      content: ""; position: absolute; z-index: -1; pointer-events: none; width: 15rem; height: 15rem;
+      right: -6rem; top: -5.4rem; opacity: .7; border-radius: 50%;
+      background: repeating-radial-gradient(ellipse at center,transparent 0 8px,rgba(172,218,180,.22) 8.5px 9.3px,transparent 10px 13px);
+      transform: rotate(-24deg) scaleX(.83);
+    }
+    .ticket-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.55rem; }
+    .ticket-bar h2 { font-size: 1.03rem; font-weight: 650; display: flex; align-items: center; gap: .53rem; }
+    .ticket-bar .slip-icon { width: .82rem; height: 1.02rem; }
+    .ticket-bar .currency { color: #d4e7dd; font: 600 .8rem/1 var(--number); letter-spacing: .09em; }
+    .invoice-label { font-size: .92rem; color: #d9eae0; }
+    .hero-money { display: flex; align-items: baseline; gap: .45rem; margin-top: .2rem; font-family: var(--number); font-variant-numeric: tabular-nums; }
+    .hero-money .symbol { color: #d9eae0; font-size: 1.55rem; font-weight: 500; }
+    .hero-value { min-width: 0; overflow-wrap: anywhere; font-weight: 590; font-size: clamp(2.25rem,4vw,3.3rem); line-height: 1.18; letter-spacing: -.045em; }
+    .hero-value.long { font-size: 2.1rem; }
+    .ticket-body { padding: 1.25rem clamp(1.3rem,2.5vw,1.9rem) 1.5rem; }
+    .fee-row { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; }
+    .fee-row > span:first-child { flex: none; font-size: 1rem; font-weight: 650; }
+    .fee-money { min-width: 0; text-align: right; overflow-wrap: anywhere; color: var(--accent); font: 680 1.68rem/1.4 var(--number); font-variant-numeric: tabular-nums; letter-spacing: -.025em; }
+    .fee-money .symbol { font-size: 1rem; }
+    .seam { position: relative; margin: 1.2rem 0; border-top: 1px dashed #c0cec5; }
+    .seam::before, .seam::after {
+      content: ""; position: absolute; top: -.46rem; width: .46rem; height: .86rem; background: var(--page); border: 1px solid var(--line);
+    }
+    .seam::before { left: calc(-1 * clamp(1.3rem,2.5vw,1.9rem) - 1px); border-left: 0; border-radius: 0 1rem 1rem 0; }
+    .seam::after { right: calc(-1 * clamp(1.3rem,2.5vw,1.9rem) - 1px); border-right: 0; border-radius: 1rem 0 0 1rem; }
+    .lines { display: grid; gap: .65rem; }
+    .lines > div { display: flex; gap: 1rem; justify-content: space-between; align-items: baseline; }
+    .lines dt { color: var(--muted); font-size: .9rem; flex: none; }
+    .lines dd { text-align: right; font-size: .94rem; font-weight: 590; overflow-wrap: anywhere; min-width: 0; }
+    .copy {
+      width: 100%; min-height: 2.8rem; display: flex; align-items: center; justify-content: center; gap: .55rem;
+      margin-top: 1.35rem; padding: .55rem .8rem; background: #e6f2e9; border: 1px solid #b5cfbd;
+      border-radius: .64rem; color: var(--forest); font-weight: 650;
+    }
+    .copy:hover:enabled { background: #d7ebdd; }
+    .copy:disabled { background: #f0f3f0; color: #68786d; border-color: #dbe3dc; }
+    .copy-icon { position: relative; width: 1.03rem; height: 1.03rem; }
+    .copy-icon::before, .copy-icon::after { content: ""; position: absolute; width: .63rem; height: .73rem; border: 1.4px solid currentColor; border-radius: .15rem; }
+    .copy-icon::before { left: 0; top: 0; }
+    .copy-icon::after { right: 0; bottom: 0; background: #e6f2e9; }
+    .copy:disabled .copy-icon::after { background: #f0f3f0; }
+    .manual-copy { margin-top: .8rem; font-size: .9rem; }
+    .manual-copy textarea { margin-top: .35rem; width: 100%; min-height: 8.8rem; resize: vertical; border: 1px solid var(--line); border-radius: .35rem; padding: .5rem; }
+    .privacy { display: flex; justify-content: center; align-items: center; gap: .5rem; font-size: .84rem; color: var(--muted); margin: 1rem 0 0; }
+    .lock-icon { position: relative; width: .75rem; height: .62rem; border: 1.25px solid currentColor; border-radius: .13rem; margin-top: .18rem; }
+    .lock-icon::before { content: ""; position: absolute; width: .36rem; height: .32rem; left: 50%; top: -.36rem; transform: translateX(-50%); border: 1.25px solid currentColor; border-bottom: 0; border-radius: .3rem .3rem 0 0; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    dialog {
+      position: fixed; inset: 0; width: min(30rem,calc(100% - 2rem)); max-height: calc(100% - 2rem);
+      overflow-y: auto; border: 1px solid var(--line); border-radius: 1rem; padding: 1.5rem; margin: auto;
+      background: white; color: var(--ink); box-shadow: 0 1rem 4rem rgba(14,43,31,.18);
+    }
+    dialog:not([open]) { display: none; }
+    dialog::backdrop { background: rgba(12,32,25,.45); }
+    .dialog-bar { display: flex; justify-content: space-between; align-items: center; gap: .7rem; margin-bottom: 1rem; }
+    .dialog-bar h2 { font-size: 1.38rem; }
+    .close { min-height: 2.6rem; border-radius: .5rem; padding: .3rem .7rem; background: var(--mint); border: 1px solid var(--line); color: var(--accent); font-size: .9rem; }
+    .rule-rates { padding: .65rem .85rem; background: var(--mint); color: var(--forest); border-radius: .55rem; font-size: .91rem; font-weight: 600; }
+    .rule { padding: .95rem 0; border-bottom: 1px solid var(--line); }
+    .rule h3 { font-size: 1rem; margin: 0 0 .15rem; }
+    .rule p, .rounding { color: var(--muted); font-size: .94rem; }
+    .rounding { margin-top: .9rem; }
+    @media (max-width: 760px) {
+      .wrap { width: min(100% - 2rem,36rem); }
+      .topbar .wrap { min-height: 3.45rem; }
+      main { padding-top: 1.55rem; padding-bottom: 2rem; }
+      .layout { grid-template-columns: minmax(0,1fr); gap: 1rem; }
+      .entry-panel { gap: 1.2rem; }
+      .plan { min-height: 4rem; }
+      .ticket-bar { margin-bottom: 1.15rem; }
+    }
+    @media (max-width: 370px) {
+      .wrap { width: calc(100% - 1.25rem); }
+      .entry-panel { padding: 1rem; }
+      .plans { gap: .35rem; }
+      .plan { padding-inline: .5rem; }
+      .plan strong { font-size: 1rem; }
+      .check { width: .7rem; height: .7rem; top: .3rem; right: .3rem; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><i class="slip-icon"></i></span>开票助手</div>
+      <button class="rules-button" id="open-rules" type="button" aria-haspopup="dialog">
+        <span class="info-icon" aria-hidden="true">i</span>计算规则
+      </button>
+    </div>
+  </header>
+  <main class="wrap">
+    <div class="intro">
+      <h1>发票费用计算器</h1>
+      <p>输入人民币金额，结果自动四舍五入到分。</p>
+    </div>
+    <noscript><p>请启用浏览器的 JavaScript，以便自动计算金额。</p></noscript>
+    <div class="layout">
+      <form class="entry-panel" id="calculator" aria-label="开票条件" novalidate>
+        <fieldset>
+          <legend>会员类型</legend>
+          <div class="plans">
+            <label class="choice">
+              <input class="radio" type="radio" name="plan" value="plus" checked>
+              <span class="plan option"><strong>Plus</strong><small>补费 7%</small><i class="check" aria-hidden="true"></i></span>
+            </label>
+            <label class="choice">
+              <input class="radio" type="radio" name="plan" value="pro5">
+              <span class="plan option"><strong>Pro 5x</strong><small>补费 6%</small><i class="check" aria-hidden="true"></i></span>
+            </label>
+            <label class="choice">
+              <input class="radio" type="radio" name="plan" value="pro20">
+              <span class="plan option"><strong>Pro 20x</strong><small>补费 5%</small><i class="check" aria-hidden="true"></i></span>
+            </label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>开票方式</legend>
+          <div class="methods">
+            <label class="choice">
+              <input class="radio" type="radio" name="method" value="order" checked>
+              <span class="method option"><i class="dot" aria-hidden="true"></i><span><strong>只开订单金额</strong><small>按订单金额开票，补费另付</small></span></span>
+            </label>
+            <label class="choice">
+              <input class="radio" type="radio" name="method" value="included">
+              <span class="method option"><i class="dot" aria-hidden="true"></i><span><strong>补费也算进发票</strong><small>发票金额包含订单金额和补费</small></span></span>
+            </label>
+            <label class="choice">
+              <input class="radio" type="radio" name="method" value="specified">
+              <span class="method option"><i class="dot" aria-hidden="true"></i><span><strong>指定含税开票金额</strong><small>直接填写想开出的票面金额</small></span></span>
+            </label>
+          </div>
+        </fieldset>
+        <div>
+          <div class="amount-heading">
+            <label for="amount" class="field-label" id="amount-label">订单金额</label>
+            <button class="example" id="example" type="button">填入示例 ¥140</button>
+          </div>
+          <div class="amount-box" id="amount-box">
+            <span aria-hidden="true">¥</span>
+            <input type="text" id="amount" inputmode="decimal" enterkeyhint="done" autocomplete="off" spellcheck="false" placeholder="0.00" aria-describedby="amount-error">
+          </div>
+          <p id="amount-error" class="error" hidden></p>
+        </div>
+      </form>
+      <div>
+        <section class="ticket" aria-labelledby="ticket-title" id="ticket">
+          <div class="ticket-head">
+            <div class="ticket-bar">
+              <h2 id="ticket-title"><i class="slip-icon" aria-hidden="true"></i>费用试算单</h2>
+              <span class="currency" aria-label="人民币">CNY</span>
+            </div>
+            <div class="invoice-label">开票金额</div>
+            <div class="hero-money"><span class="symbol">¥</span><strong id="invoice" class="hero-value">—</strong></div>
+          </div>
+          <div class="ticket-body">
+            <div class="fee-row">
+              <span>应补费用</span>
+              <span class="fee-money"><span class="symbol">¥</span> <span id="fee">—</span></span>
+            </div>
+            <div class="seam" aria-hidden="true"></div>
+            <dl class="lines">
+              <div><dt>会员类型</dt><dd id="plan-summary">Plus · 7%</dd></div>
+              <div><dt>开票方式</dt><dd id="method-summary">只开订单金额</dd></div>
+              <div><dt id="input-summary-label">订单金额</dt><dd id="input-summary">待输入</dd></div>
+            </dl>
+            <button class="copy" type="button" id="copy" disabled><i class="copy-icon" aria-hidden="true"></i><span id="copy-label">复制计算结果</span></button>
+            <div class="manual-copy" id="manual-copy" hidden>
+              <label for="copy-text">可长按或选中下方文字复制</label>
+              <textarea id="copy-text" readonly></textarea>
+            </div>
+          </div>
+        </section>
+        <p class="privacy"><i class="lock-icon" aria-hidden="true"></i>金额仅在你的设备上计算</p>
+      </div>
+    </div>
+    <p class="sr-only" id="announcement" role="status" aria-live="polite" aria-atomic="true"></p>
+  </main>
+  <dialog id="rules" aria-labelledby="rules-title">
+    <div class="dialog-bar"><h2 id="rules-title">计算规则</h2><button type="button" class="close" id="close-rules">关闭</button></div>
+    <p class="rule-rates" id="rule-rates"></p>
+    <div class="rule"><h3>只开订单金额</h3><p>开票金额等于订单金额。应补费用 = 订单金额 × 补费比例。</p></div>
+    <div class="rule"><h3>补费也算进发票</h3><p>开票金额 = 订单金额 ÷（1 − 补费比例）。应补费用 = 开票金额 − 订单金额。</p></div>
+    <div class="rule"><h3>指定含税开票金额</h3><p>开票金额等于你指定的金额。应补费用 = 指定金额 × 补费比例。</p></div>
+    <p class="rounding">结果四舍五入到分。补费计入发票时，先将开票金额取到分，再减去订单金额。</p>
+  </dialog>
+  <script>
+    "use strict";
+    const plans = {
+      plus: { name: "Plus", rate: 7, orderExample: "140", invoiceExample: "200" },
+      pro5: { name: "Pro 5x", rate: 6, orderExample: "610", invoiceExample: "800" },
+      pro20: { name: "Pro 20x", rate: 5, orderExample: "1010", invoiceExample: "1200" }
+    };
+    const methods = {
+      order: "只开订单金额",
+      included: "补费也算进发票",
+      specified: "指定含税开票金额"
+    };
+    const numberFormat = new Intl.NumberFormat("zh-CN");
+    const byId = id => document.getElementById(id);
+    const form = byId("calculator");
+    const amount = byId("amount");
+    const copy = byId("copy");
+    const rules = byId("rules");
+
+    function parseCents(raw) {
+      const value = raw.normalize("NFKC").trim().replace(/^¥\s*/, "").replace(/\s*元$/, "");
+      const match = /^(?:(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{0,2}))?|\.(\d{1,2}))$/.exec(value);
+      if (!match) return null;
+      const whole = (match[1] || "0").replace(/,/g, "");
+      const fraction = (match[2] || match[3] || "").padEnd(2, "0");
+      return BigInt(whole) * 100n + BigInt(fraction);
+    }
+
+    // Both arguments are nonnegative integers. Half-cent ties round up.
+    function roundedQuotient(numerator, denominator) {
+      return (numerator + denominator / 2n) / denominator;
+    }
+
+    function quote(cents, rate, method) {
+      const percent = BigInt(rate);
+      if (method === "included") {
+        const invoice = roundedQuotient(cents * 100n, 100n - percent);
+        return { invoice, fee: invoice - cents };
+      }
+      return { invoice: cents, fee: roundedQuotient(cents * percent, 100n) };
+    }
+
+    function money(cents) {
+      return numberFormat.format(cents / 100n) + "." + String(cents % 100n).padStart(2, "0");
+    }
+
+    function exampleAmount(plan, method) {
+      return method === "specified" ? plan.invoiceExample : plan.orderExample;
+    }
+
+    let copyText = "";
+    function render() {
+      const plan = plans[form.elements.plan.value];
+      const method = form.elements.method.value;
+      const label = method === "specified" ? "指定含税开票金额" : "订单金额";
+      const cents = parseCents(amount.value);
+      const invalid = amount.value.trim() !== "" && cents === null;
+      const error = invalid ? "请输入有效的非负金额，最多保留两位小数。" : "";
+      const result = cents === null ? null : quote(cents, plan.rate, method);
+      const invoice = result ? money(result.invoice) : "—";
+      const fee = result ? money(result.fee) : "—";
+      byId("amount-label").textContent = label;
+      byId("example").textContent = "填入示例 ¥" + exampleAmount(plan, method);
+      byId("amount-error").textContent = error;
+      byId("amount-error").hidden = !invalid;
+      amount.setAttribute("aria-invalid", String(invalid));
+      byId("amount-box").classList.toggle("invalid", invalid);
+      byId("invoice").textContent = invoice;
+      byId("invoice").classList.toggle("long", invoice.length > 12);
+      byId("fee").textContent = fee;
+      byId("plan-summary").textContent = plan.name + " · " + plan.rate + "%";
+      byId("method-summary").textContent = methods[method];
+      byId("input-summary-label").textContent = label;
+      byId("input-summary").textContent = result ? "¥" + money(cents) : (invalid ? "金额格式有误" : "待输入");
+      byId("copy-label").textContent = "复制计算结果";
+      byId("manual-copy").hidden = true;
+      copy.disabled = !result;
+      copyText = result ? [
+        plan.name + "（补费 " + plan.rate + "%） · " + methods[method],
+        label + "：" + money(cents) + " 元",
+        "开票金额：" + invoice + " 元",
+        "应补费用：" + fee + " 元"
+      ].join("\n") : "";
+      byId("announcement").textContent = result ? "开票金额 " + invoice + " 元，应补费用 " + fee + " 元。" : error;
+    }
+
+    amount.addEventListener("input", render);
+    form.addEventListener("change", event => { if (event.target.type === "radio") render(); });
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      if (copyText) {
+        amount.blur();
+        byId("ticket").scrollIntoView({ block: "nearest" });
+      }
+    });
+    byId("example").addEventListener("click", () => {
+      amount.value = exampleAmount(plans[form.elements.plan.value], form.elements.method.value);
+      render();
+    });
+    copy.addEventListener("click", async () => {
+      const text = copyText;
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        if (text !== copyText) return;
+        const field = byId("copy-text");
+        field.value = text;
+        byId("manual-copy").hidden = false;
+        field.focus();
+        field.select();
+        try {
+          if (!document.execCommand("copy")) return;
+        } catch {
+          return;
+        }
+        byId("manual-copy").hidden = true;
+        copy.focus();
+      }
+      if (text === copyText) {
+        byId("copy-label").textContent = "已复制结果";
+        byId("announcement").textContent = "计算结果已复制。";
+      }
+    });
+    byId("rule-rates").textContent = Object.values(plans).map(plan => plan.name + " " + plan.rate + "%").join("　/　");
+    byId("open-rules").addEventListener("click", () => {
+      if (typeof rules.showModal === "function") rules.showModal();
+      else rules.setAttribute("open", "");
+      byId("close-rules").focus();
+    });
+    function closeRules() {
+      if (typeof rules.close === "function") rules.close();
+      else rules.removeAttribute("open");
+      byId("open-rules").focus();
+    }
+    byId("close-rules").addEventListener("click", closeRules);
+    rules.addEventListener("click", event => {
+      if (event.target !== rules) return;
+      const rect = rules.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeRules();
+    });
+    render();
+  </script>
+</body>
+</html>
