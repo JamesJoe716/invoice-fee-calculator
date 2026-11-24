@@ -95,6 +95,15 @@
     .radio:checked + .option .check { display: grid; place-items: center; }
     .check::before { content: ""; width: .34rem; height: .18rem; border: solid white; border-width: 0 0 1.5px 1.5px; transform: translateY(-.05rem) rotate(-45deg); }
     .methods { display: grid; gap: .46rem; }
+    .extras { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .55rem; }
+    .extra {
+      display: flex; align-items: center; gap: .55rem; min-height: 2.8rem; padding: .55rem .7rem;
+      border: 1px solid var(--line); border-radius: .66rem; cursor: pointer; font-weight: 600;
+    }
+    .extra input { flex: none; width: 1.08rem; height: 1.08rem; margin: 0; accent-color: var(--accent); }
+    .extra:has(input:checked) { background: var(--mint); border-color: #46886f; }
+    .extra:focus-within { outline: 2px solid #46886f; outline-offset: 2px; }
+    .extras-hint { margin-top: .45rem; color: var(--muted); font-size: .9rem; }
     .method {
       display: flex; align-items: center; gap: .8rem; padding: .65rem .85rem;
       border-radius: .66rem; line-height: 1.38;
@@ -180,11 +189,12 @@
     .billing-pair { display: grid; grid-template-columns: minmax(0,1fr) minmax(5rem,.32fr); gap: .8rem; }
     .billing-field { display: grid; min-width: 0; gap: .3rem; }
     .billing-field label, .message-label { font-size: .94rem; font-weight: 650; }
-    .billing-field input {
+    .billing-field input, .billing-field textarea {
       width: 100%; min-width: 0; min-height: 2.75rem; padding: .53rem .75rem;
       color: var(--ink); background: #fff; border: 1px solid #aab9af; border-radius: .55rem;
     }
-    .billing-field input:focus-visible, .message-preview:focus-visible { outline: 2px solid #46886f; outline-offset: 2px; }
+    .billing-field textarea { resize: vertical; }
+    .billing-field input:focus-visible, .billing-field textarea:focus-visible, .message-preview:focus-visible { outline: 2px solid #46886f; outline-offset: 2px; }
     .billing-field input[aria-invalid="true"] { border-color: #a23e32; }
     .billing-field input[readonly] { font-variant-numeric: tabular-nums; background: #f4f7f4; border-color: var(--line); }
     .billing-field small { margin-left: .4rem; font-size: .85rem; font-weight: 450; color: var(--muted); }
@@ -264,15 +274,15 @@
           <div class="plans">
             <label class="choice">
               <input class="radio" type="radio" name="plan" value="plus" checked>
-              <span class="plan option"><strong>Plus</strong><small>补费 7%</small><i class="check" aria-hidden="true"></i></span>
+              <span class="plan option"><strong>Plus</strong><small>基础补费 7%</small><i class="check" aria-hidden="true"></i></span>
             </label>
             <label class="choice">
               <input class="radio" type="radio" name="plan" value="pro5">
-              <span class="plan option"><strong>Pro 5x</strong><small>补费 6%</small><i class="check" aria-hidden="true"></i></span>
+              <span class="plan option"><strong>Pro 5x</strong><small>基础补费 6%</small><i class="check" aria-hidden="true"></i></span>
             </label>
             <label class="choice">
               <input class="radio" type="radio" name="plan" value="pro20">
-              <span class="plan option"><strong>Pro 20x</strong><small>补费 5%</small><i class="check" aria-hidden="true"></i></span>
+              <span class="plan option"><strong>Pro 20x</strong><small>基础补费 5%</small><i class="check" aria-hidden="true"></i></span>
             </label>
           </div>
         </fieldset>
@@ -292,6 +302,14 @@
               <span class="method option"><i class="dot" aria-hidden="true"></i><span><strong>指定含税开票金额</strong><small>直接填写想开出的票面金额</small></span></span>
             </label>
           </div>
+        </fieldset>
+        <fieldset aria-describedby="extras-hint">
+          <legend>附加开票要求</legend>
+          <div class="extras">
+            <label class="extra"><input type="checkbox" name="extra" value="明细盖章">需要明细盖章</label>
+            <label class="extra"><input type="checkbox" name="extra" value="专票">需要专票</label>
+          </div>
+          <p class="extras-hint" id="extras-hint">每选一项，补费比例加 2 个百分点。两项都选加 4 个百分点。</p>
         </fieldset>
         <div>
           <div class="amount-heading">
@@ -322,8 +340,10 @@
             </div>
             <div class="seam" aria-hidden="true"></div>
             <dl class="lines">
-              <div><dt>会员类型</dt><dd id="plan-summary">Plus · 7%</dd></div>
+              <div><dt>会员类型</dt><dd id="plan-summary">Plus</dd></div>
               <div><dt>开票方式</dt><dd id="method-summary">只开订单金额</dd></div>
+              <div><dt>附加开票要求</dt><dd id="extras-summary">无</dd></div>
+              <div><dt>合计补费比例</dt><dd id="rate-summary">7%</dd></div>
               <div><dt id="input-summary-label">订单金额</dt><dd id="input-summary">待输入</dd></div>
             </dl>
             <button class="copy" type="button" id="copy" disabled><i class="copy-icon" aria-hidden="true"></i><span id="copy-label">复制计算结果</span></button>
@@ -366,10 +386,18 @@
             <label for="billing-total">总金额（元）<small>按开票金额自动填入</small></label>
             <input id="billing-total" type="text" placeholder="待计算" readonly>
           </div>
+          <div class="billing-field">
+            <label for="billing-fee">补费（元）</label>
+            <input id="billing-fee" type="text" placeholder="待计算" readonly>
+          </div>
+          <div class="billing-field">
+            <label for="billing-note">发票的备注</label>
+            <textarea id="billing-note" rows="2" placeholder="如不需要，可留空"></textarea>
+          </div>
         </div>
         <div class="billing-message">
           <label for="billing-preview" class="message-label">发送预览</label>
-          <textarea class="message-preview" id="billing-preview" rows="5" readonly></textarea>
+          <textarea class="message-preview" id="billing-preview" rows="9" readonly></textarea>
           <button class="copy" id="billing-copy" type="submit"><i class="copy-icon" aria-hidden="true"></i><span id="billing-copy-label">复制开票资料</span></button>
           <p class="copy-feedback" id="billing-status" role="status"></p>
         </div>
@@ -380,6 +408,7 @@
   <dialog id="rules" aria-labelledby="rules-title">
     <div class="dialog-bar"><h2 id="rules-title">计算规则</h2><button type="button" class="close" id="close-rules">关闭</button></div>
     <p class="rule-rates" id="rule-rates"></p>
+    <div class="rule"><h3>附加开票要求</h3><p>在会员基础补费比例上，明细盖章加 2 个百分点，专票加 2 个百分点。以下三种开票方式都按合计补费比例计算。</p></div>
     <div class="rule"><h3>只开订单金额</h3><p>开票金额等于订单金额。应补费用 = 订单金额 × 补费比例。</p></div>
     <div class="rule"><h3>补费也算进发票</h3><p>开票金额 = 订单金额 ÷（1 − 补费比例）。应补费用 = 开票金额 − 订单金额。</p></div>
     <div class="rule"><h3>指定含税开票金额</h3><p>开票金额等于你指定的金额。应补费用 = 指定金额 × 补费比例。</p></div>
@@ -401,11 +430,15 @@
     const byId = id => document.getElementById(id);
     const form = byId("calculator");
     const amount = byId("amount");
+    const extraOptions = Array.from(form.querySelectorAll('input[name="extra"]'));
+    const pointsPerExtra = 2;
     const copy = byId("copy");
     const rules = byId("rules");
     const billingForm = byId("billing-form");
     const billingFields = Array.from(billingForm.querySelectorAll("input[required]"));
     const billingTotal = byId("billing-total");
+    const billingFee = byId("billing-fee");
+    const billingNote = byId("billing-note");
     const billingPreview = byId("billing-preview");
     const billingCopy = byId("billing-copy");
     const billingStatus = byId("billing-status");
@@ -444,7 +477,14 @@
 
     function renderBilling() {
       const lines = billingFields.map(field => field.labels[0].textContent + "：" + (field.value.trim() || "待填写"));
-      lines.push("总金额：" + (billingTotal.value || "待计算"));
+      for (const option of extraOptions) {
+        lines.push("是否需要" + option.value + "：" + (option.checked ? "是" : "否"));
+      }
+      lines.push(
+        "总金额：" + (billingTotal.value || "待计算"),
+        "补费：" + (billingFee.value || "待计算"),
+        "发票的备注：" + billingNote.value.trim()
+      );
       billingPreview.value = lines.join("\n");
       byId("billing-copy-label").textContent = "复制开票资料";
       billingStatus.textContent = "";
@@ -454,11 +494,14 @@
     function render() {
       const plan = plans[form.elements.plan.value];
       const method = form.elements.method.value;
+      const selectedExtras = extraOptions.filter(option => option.checked);
+      const rate = plan.rate + selectedExtras.length * pointsPerExtra;
+      const extrasText = selectedExtras.map(option => option.value).join("、") || "无";
       const label = method === "specified" ? "指定含税开票金额" : "订单金额";
       const cents = parseCents(amount.value);
       const invalid = amount.value.trim() !== "" && cents === null;
       const error = invalid ? "请输入有效的非负金额，最多保留两位小数。" : "";
-      const result = cents === null ? null : quote(cents, plan.rate, method);
+      const result = cents === null ? null : quote(cents, rate, method);
       const invoice = result ? money(result.invoice) : "—";
       const fee = result ? money(result.fee) : "—";
       byId("amount-label").textContent = label;
@@ -470,26 +513,30 @@
       byId("invoice").textContent = invoice;
       byId("invoice").classList.toggle("long", invoice.length > 12);
       byId("fee").textContent = fee;
-      byId("plan-summary").textContent = plan.name + " · " + plan.rate + "%";
+      byId("plan-summary").textContent = plan.name;
       byId("method-summary").textContent = methods[method];
+      byId("extras-summary").textContent = extrasText;
+      byId("rate-summary").textContent = rate + "%";
       byId("input-summary-label").textContent = label;
       byId("input-summary").textContent = result ? "¥" + money(cents) : (invalid ? "金额格式有误" : "待输入");
       byId("copy-label").textContent = "复制计算结果";
       byId("manual-copy").hidden = true;
       copy.disabled = !result;
       copyText = result ? [
-        plan.name + "（补费 " + plan.rate + "%） · " + methods[method],
+        plan.name + "（补费 " + rate + "%） · " + methods[method],
+        "附加开票要求：" + extrasText,
         label + "：" + money(cents) + " 元",
         "开票金额：" + invoice + " 元",
         "应补费用：" + fee + " 元"
       ].join("\n") : "";
       billingTotal.value = result ? money(result.invoice, false) : "";
+      billingFee.value = result ? money(result.fee, false) : "";
       renderBilling();
       byId("announcement").textContent = result ? "开票金额 " + invoice + " 元，应补费用 " + fee + " 元。" : error;
     }
 
     amount.addEventListener("input", render);
-    form.addEventListener("change", event => { if (event.target.type === "radio") render(); });
+    form.addEventListener("change", event => { if (event.target !== amount) render(); });
     form.addEventListener("submit", event => {
       event.preventDefault();
       if (copyText) {
@@ -559,7 +606,7 @@
       if (copied) byId("billing-copy-label").textContent = "已复制开票资料";
       billingStatus.textContent = copied ? "可以粘贴发给开票人了。" : "请长按或选中预览中的文字复制。";
     });
-    byId("rule-rates").textContent = Object.values(plans).map(plan => plan.name + " " + plan.rate + "%").join("　/　");
+    byId("rule-rates").textContent = "基础补费比例　" + Object.values(plans).map(plan => plan.name + " " + plan.rate + "%").join("　/　");
     byId("open-rules").addEventListener("click", () => {
       if (typeof rules.showModal === "function") rules.showModal();
       else rules.setAttribute("open", "");
