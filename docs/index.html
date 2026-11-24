@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#164f43">
-  <meta name="description" content="选择会员和开票方式，输入金额，即时计算开票金额和应补费用。">
+  <meta name="description" content="按会员和开票方式计算开票金额与补费，填写名称和税号，一键复制开票资料。">
   <link rel="icon" href="data:,">
   <title>发票费用计算器</title>
   <style>
@@ -64,7 +64,7 @@
     h1 { font-size: clamp(2rem,3.2vw,2.8rem); line-height: 1.22; letter-spacing: -.045em; font-weight: 780; }
     .intro p { margin-top: .5rem; color: var(--muted); font-size: 1rem; }
     .layout { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 1.5rem; align-items: start; }
-    .entry-panel, .ticket {
+    .entry-panel, .ticket, .billing-panel {
       min-width: 0; background: white; border: 1px solid var(--line); border-radius: 1.15rem;
       box-shadow: 0 3px 12px rgba(27,59,44,.035);
     }
@@ -116,7 +116,7 @@
     }
     .amount-box:focus-within { border-color: var(--accent); outline: 2px solid #a5cbbc; outline-offset: 1px; }
     .amount-box.invalid { border-color: #a23e32; }
-    input[type=text] { color: var(--ink); background: transparent; border: 0; outline: none; width: 100%; min-width: 0; padding: .78rem 0; font: inherit; font-variant-numeric: tabular-nums; }
+    .amount-box input { color: var(--ink); background: transparent; border: 0; outline: none; width: 100%; min-width: 0; padding: .78rem 0; font: inherit; font-variant-numeric: tabular-nums; }
     input::placeholder { color: #84918a; font-weight: 450; }
     .error { font-size: .875rem; color: #9c3326; margin-top: .42rem; }
     .ticket { align-self: start; }
@@ -166,8 +166,41 @@
     .copy-icon::before { left: 0; top: 0; }
     .copy-icon::after { right: 0; bottom: 0; background: #e6f2e9; }
     .copy:disabled .copy-icon::after { background: #f0f3f0; }
+    .billing-link { display: block; width: fit-content; margin: .55rem auto 0; padding: .2rem .4rem; color: var(--accent); font-size: .95rem; text-underline-offset: .2em; }
     .manual-copy { margin-top: .8rem; font-size: .9rem; }
     .manual-copy textarea { margin-top: .35rem; width: 100%; min-height: 8.8rem; resize: vertical; border: 1px solid var(--line); border-radius: .35rem; padding: .5rem; }
+    .billing-panel { margin-top: 1.5rem; padding: clamp(1.25rem,2.65vw,2rem); }
+    .billing-panel h2 { font-size: 1.4rem; letter-spacing: -.025em; }
+    .billing-panel header p { margin-top: .25rem; color: var(--muted); }
+    .billing-layout {
+      display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr);
+      align-items: start; gap: clamp(1.25rem,3.4vw,2.5rem); margin-top: 1.2rem;
+    }
+    .billing-fields { display: grid; gap: .85rem; }
+    .billing-pair { display: grid; grid-template-columns: minmax(0,1fr) minmax(5rem,.32fr); gap: .8rem; }
+    .billing-field { display: grid; min-width: 0; gap: .3rem; }
+    .billing-field label, .message-label { font-size: .94rem; font-weight: 650; }
+    .billing-field input {
+      width: 100%; min-width: 0; min-height: 2.75rem; padding: .53rem .75rem;
+      color: var(--ink); background: #fff; border: 1px solid #aab9af; border-radius: .55rem;
+    }
+    .billing-field input:focus-visible, .message-preview:focus-visible { outline: 2px solid #46886f; outline-offset: 2px; }
+    .billing-field input[aria-invalid="true"] { border-color: #a23e32; }
+    .billing-field input[readonly] { font-variant-numeric: tabular-nums; background: #f4f7f4; border-color: var(--line); }
+    .billing-field small { margin-left: .4rem; font-size: .85rem; font-weight: 450; color: var(--muted); }
+    .billing-message {
+      padding: 1.05rem 1.15rem; background: #f3f8f3; border: 1px solid #cddfd2; border-radius: .8rem;
+    }
+    .message-preview {
+      display: block; width: 100%; min-height: 10rem; margin: .7rem 0 0; padding: .65rem .8rem;
+      resize: vertical; border: 1px solid var(--line); border-radius: .45rem; background: white;
+      color: var(--ink); line-height: 1.65; font-variant-numeric: tabular-nums;
+    }
+    .billing-message .copy { margin-top: .8rem; background: var(--forest); border-color: var(--forest); color: white; }
+    .billing-message .copy:hover { background: #104236; }
+    .billing-message .copy-icon::after { background: var(--forest); }
+    .copy-feedback { margin-top: .55rem; color: var(--forest); font-size: .9rem; }
+    .copy-feedback:empty { margin: 0; }
     .privacy { display: flex; justify-content: center; align-items: center; gap: .5rem; font-size: .84rem; color: var(--muted); margin: 1rem 0 0; }
     .lock-icon { position: relative; width: .75rem; height: .62rem; border: 1.25px solid currentColor; border-radius: .13rem; margin-top: .18rem; }
     .lock-icon::before { content: ""; position: absolute; width: .36rem; height: .32rem; left: 50%; top: -.36rem; transform: translateX(-50%); border: 1.25px solid currentColor; border-bottom: 0; border-radius: .3rem .3rem 0 0; }
@@ -193,6 +226,8 @@
       main { padding-top: 1.55rem; padding-bottom: 2rem; }
       .layout { grid-template-columns: minmax(0,1fr); gap: 1rem; }
       .entry-panel { gap: 1.2rem; }
+      .billing-panel { margin-top: 1rem; }
+      .billing-layout { grid-template-columns: minmax(0,1fr); gap: 1.1rem; }
       .plan { min-height: 4rem; }
       .ticket-bar { margin-bottom: 1.15rem; }
     }
@@ -219,7 +254,7 @@
   <main class="wrap">
     <div class="intro">
       <h1>发票费用计算器</h1>
-      <p>输入人民币金额，结果自动四舍五入到分。</p>
+      <p>输入金额试算费用，再填写并复制开票资料。</p>
     </div>
     <noscript><p>请启用浏览器的 JavaScript，以便自动计算金额。</p></noscript>
     <div class="layout">
@@ -296,11 +331,50 @@
               <label for="copy-text">可长按或选中下方文字复制</label>
               <textarea id="copy-text" readonly></textarea>
             </div>
+            <a class="billing-link" href="#billing-title">填写开票资料</a>
           </div>
         </section>
         <p class="privacy"><i class="lock-icon" aria-hidden="true"></i>金额仅在你的设备上计算</p>
       </div>
     </div>
+    <form class="billing-panel" id="billing-form" aria-labelledby="billing-title" autocomplete="off" novalidate>
+      <header>
+        <h2 id="billing-title" tabindex="-1">开票资料</h2>
+        <p>填写名称和税号，复制后发给开票人。</p>
+      </header>
+      <div class="billing-layout">
+        <div class="billing-fields">
+          <div class="billing-field">
+            <label for="billing-name">名称</label>
+            <input id="billing-name" type="text" placeholder="请输入发票抬头全称" required>
+          </div>
+          <div class="billing-field">
+            <label for="billing-tax">税号</label>
+            <input id="billing-tax" type="text" placeholder="请输入纳税人识别号" autocapitalize="off" spellcheck="false" required>
+          </div>
+          <div class="billing-pair">
+            <div class="billing-field">
+              <label for="billing-item">品名</label>
+              <input id="billing-item" type="text" value="生产生活服务技术服务" required>
+            </div>
+            <div class="billing-field">
+              <label for="billing-quantity">数量</label>
+              <input id="billing-quantity" type="text" inputmode="decimal" value="1" required>
+            </div>
+          </div>
+          <div class="billing-field">
+            <label for="billing-total">总金额（元）<small>按开票金额自动填入</small></label>
+            <input id="billing-total" type="text" placeholder="待计算" readonly>
+          </div>
+        </div>
+        <div class="billing-message">
+          <label for="billing-preview" class="message-label">发送预览</label>
+          <textarea class="message-preview" id="billing-preview" rows="5" readonly></textarea>
+          <button class="copy" id="billing-copy" type="submit"><i class="copy-icon" aria-hidden="true"></i><span id="billing-copy-label">复制开票资料</span></button>
+          <p class="copy-feedback" id="billing-status" role="status"></p>
+        </div>
+      </div>
+    </form>
     <p class="sr-only" id="announcement" role="status" aria-live="polite" aria-atomic="true"></p>
   </main>
   <dialog id="rules" aria-labelledby="rules-title">
@@ -329,6 +403,12 @@
     const amount = byId("amount");
     const copy = byId("copy");
     const rules = byId("rules");
+    const billingForm = byId("billing-form");
+    const billingFields = Array.from(billingForm.querySelectorAll("input[required]"));
+    const billingTotal = byId("billing-total");
+    const billingPreview = byId("billing-preview");
+    const billingCopy = byId("billing-copy");
+    const billingStatus = byId("billing-status");
 
     function parseCents(raw) {
       const value = raw.normalize("NFKC").trim().replace(/^¥\s*/, "").replace(/\s*元$/, "");
@@ -353,12 +433,21 @@
       return { invoice: cents, fee: roundedQuotient(cents * percent, 100n) };
     }
 
-    function money(cents) {
-      return numberFormat.format(cents / 100n) + "." + String(cents % 100n).padStart(2, "0");
+    function money(cents, groupThousands = true) {
+      const whole = cents / 100n;
+      return (groupThousands ? numberFormat.format(whole) : whole.toString()) + "." + String(cents % 100n).padStart(2, "0");
     }
 
     function exampleAmount(plan, method) {
       return method === "specified" ? plan.invoiceExample : plan.orderExample;
+    }
+
+    function renderBilling() {
+      const lines = billingFields.map(field => field.labels[0].textContent + "：" + (field.value.trim() || "待填写"));
+      lines.push("总金额：" + (billingTotal.value || "待计算"));
+      billingPreview.value = lines.join("\n");
+      byId("billing-copy-label").textContent = "复制开票资料";
+      billingStatus.textContent = "";
     }
 
     let copyText = "";
@@ -394,6 +483,8 @@
         "开票金额：" + invoice + " 元",
         "应补费用：" + fee + " 元"
       ].join("\n") : "";
+      billingTotal.value = result ? money(result.invoice, false) : "";
+      renderBilling();
       byId("announcement").textContent = result ? "开票金额 " + invoice + " 元，应补费用 " + fee + " 元。" : error;
     }
 
@@ -410,30 +501,63 @@
       amount.value = exampleAmount(plans[form.elements.plan.value], form.elements.method.value);
       render();
     });
-    copy.addEventListener("click", async () => {
-      const text = copyText;
-      if (!text) return;
+    async function copyMessage(text, field, button, isCurrent) {
       try {
         await navigator.clipboard.writeText(text);
       } catch {
-        if (text !== copyText) return;
-        const field = byId("copy-text");
+        if (!isCurrent()) return false;
+        const manual = field.closest(".manual-copy");
+        if (manual) manual.hidden = false;
         field.value = text;
-        byId("manual-copy").hidden = false;
         field.focus();
         field.select();
         try {
-          if (!document.execCommand("copy")) return;
+          if (!document.execCommand("copy")) return false;
         } catch {
-          return;
+          return false;
         }
-        byId("manual-copy").hidden = true;
-        copy.focus();
+        if (manual) manual.hidden = true;
+        button.focus();
       }
-      if (text === copyText) {
+      return isCurrent();
+    }
+
+    copy.addEventListener("click", async () => {
+      const text = copyText;
+      if (text && await copyMessage(text, byId("copy-text"), copy, () => text === copyText)) {
         byId("copy-label").textContent = "已复制结果";
         byId("announcement").textContent = "计算结果已复制。";
       }
+    });
+    billingForm.addEventListener("input", event => {
+      event.target.removeAttribute("aria-invalid");
+      renderBilling();
+    });
+    function showBillingError(field, message) {
+      billingStatus.textContent = message;
+      field.focus();
+      field.setCustomValidity(message);
+      field.reportValidity();
+      field.setCustomValidity("");
+    }
+    billingForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      renderBilling();
+      if (!billingTotal.value) {
+        showBillingError(amount, "请先输入有效的" + byId("amount-label").textContent + "，以计算总金额。");
+        return;
+      }
+      const missing = billingFields.find(field => !field.value.trim());
+      if (missing) {
+        missing.setAttribute("aria-invalid", "true");
+        showBillingError(missing, "请填写" + missing.labels[0].textContent + "。");
+        return;
+      }
+      const text = billingPreview.value;
+      const copied = await copyMessage(text, billingPreview, billingCopy, () => text === billingPreview.value);
+      if (text !== billingPreview.value) return;
+      if (copied) byId("billing-copy-label").textContent = "已复制开票资料";
+      billingStatus.textContent = copied ? "可以粘贴发给开票人了。" : "请长按或选中预览中的文字复制。";
     });
     byId("rule-rates").textContent = Object.values(plans).map(plan => plan.name + " " + plan.rate + "%").join("　/　");
     byId("open-rules").addEventListener("click", () => {
