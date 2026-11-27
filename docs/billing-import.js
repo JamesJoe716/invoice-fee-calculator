@@ -1,4 +1,4 @@
-import { parseBillingText } from "./billing-text.js";
+import { parseBillingText } from "./billing-text.js?v=2";
 
 function valuesForMethod(fields, method) {
   const { orderAmount, invoiceAmount, ...values } = fields;

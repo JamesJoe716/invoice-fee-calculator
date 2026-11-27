@@ -10,8 +10,8 @@ const aliases = {
   note: ["发票的备注", "发票备注", "开票备注", "备注"],
   seal: ["是否需要明细盖章", "需要明细盖章", "明细盖章"],
   special: ["是否需要专票", "需要专票", "专票"],
-  bank: ["银行信息", "开户信息", "开户银行名称", "开户行名称", "银行名称", "银行账户名称", "账户名称", "银行户名", "开户户名", "收款户名", "开户名称", "户名", "开户银行", "开户行及账号", "开户行行号", "开户行", "银行行号", "银行联行号", "联行号", "行号", "对公账户", "对公账号", "银行账户", "银行账号", "收款账户", "收款账号", "开户账号", "账号", "帐号", "账户"],
-  ignore: ["注册地址及电话", "注册地址", "单位地址", "公司地址", "办公地址", "联系地址", "地址", "联系电话", "电话号码", "手机号", "电话", "传真", "邮政编码", "邮编", "电子邮箱", "邮箱", "联系人", "订单编号", "订单号", "发票号码", "合计补费比例", "补费比例", "应补费用", "补费金额", "补费", "税率", "税额", "单价"],
+  bank: ["银行信息", "开户信息", "开户银行名称", "开户行名称", "银行名称", "银行账户名称", "账户名称", "银行户名", "开户户名", "收款户名", "开户名称", "户名", "开户银行及账号", "开户银行及帐号", "开户银行", "开户行及账号", "开户行及帐号", "开户行行号", "开户行", "银行行号", "银行联行号", "联行号", "行号", "对公账户", "对公账号", "银行账户", "银行账号", "收款账户", "收款账号", "开户账号", "账号", "帐号", "账户"],
+  ignore: ["注册地址及电话", "单位地址、电话", "单位地址及电话", "地址、电话", "地址及电话", "注册地址", "单位地址", "公司地址", "办公地址", "联系地址", "地址", "联系电话", "电话号码", "手机号", "电话", "传真", "邮政编码", "邮编", "电子邮箱", "邮箱", "联系人", "订单编号", "订单号", "发票号码", "合计补费比例", "补费比例", "应补费用", "补费金额", "补费", "税率", "税额", "单价"],
   header: ["开票信息", "开票资料", "发票信息", "购买方信息", "购方信息", "购买方"]
 };
 
@@ -19,11 +19,17 @@ const fieldForLabel = new Map();
 for (const [field, labels] of Object.entries(aliases)) {
   for (const label of labels) fieldForLabel.set(label, field);
 }
-// Match complete, longer labels first, e.g. 银行账户名称 before 名称.
-const labels = Array.from(fieldForLabel.keys()).sort((a, b) => b.length - a.length).join("|");
-const units = "(?:[ \\t]*[（(](?:元|人民币|小写|税号|统一社会信用代码|纳税人识别号)[)）])?";
-const inlineLabel = new RegExp("(" + labels + ")" + units + "[ \\t]*[:：]", "g");
-const startLabel = new RegExp("^(" + labels + ")" + units + "(?:[ \\t]*[:：=][ \\t]*|[ \\t]+|$)(.*)$");
+// Word/PDF templates often space out the label. Keep spacing in the actual buyer's name.
+const gap = "[^\\S\\r\\n]*";
+const labels = Array.from(fieldForLabel.keys()).sort((a, b) => b.length - a.length)
+  .map(label => Array.from(label).join(gap)).join("|");
+const units = "(?:" + gap + "[（(](?:元|人民币|小写|税号|统一社会信用代码|纳税人识别号)[)）])?";
+const hintText = "(?:(?:开具)?(?:增值税)?(?:专用发票|普通发票|专票|普票)(?:时)?)?(?:必填|选填)(?:项)?";
+const hint = "[【［\\[（(]" + gap + hintText + gap + "[】］\\]）)]";
+const fieldLabel = "(" + labels + ")" + units + "(?:" + gap + hint + ")?";
+const inlineLabel = new RegExp(fieldLabel + gap + "[:：]", "g");
+const startLabel = new RegExp("^" + fieldLabel + "(?:" + gap + "[:：=]" + gap + "|[^\\S\\r\\n]+|$)(.*)$");
+const edgeHints = new RegExp("^(?:" + hint + gap + ")+|(?:" + hint + gap + ")+$", "g");
 const organization = /(?:公司|大学|学院|学校|医院|研究院|研究所|中心|事务所|工作室|合作社|基金会|协会|委员会|经营部|商行)[)）]?$/;
 const product = /(?:服务费|咨询费|技术费|使用费|会员费|资料费|培训费|材料费|软件费|费|服务|软件|设备|材料|耗材|会员)$/;
 const instruction = /(?:请问|请帮|麻烦|不需要|是否|不要|粘贴|复制|发票|补费|开户|银行|账号|帐号|地址|电话)/;
@@ -58,7 +64,7 @@ function looksLikeItem(value) {
 }
 
 export function parseBillingText(source, formatAmount, fromImage = false) {
-  let text = source.replace(/\r\n?/g, "\n").replace(/\\n/g, "\n")
+  let text = source.replace(/\r\n?|[\u2028\u2029]/g, "\n").replace(/\\n/g, "\n")
     .replace(/\\[ \t]*(?=\n|$)/g, "").replace(/[\u200b-\u200f\ufeff]/g, "");
   if (fromImage) text = text.replace(/([\u3400-\u9fff])[ \t]+(?=[\u3400-\u9fff])/g, "$1");
   const lines = text.replace(inlineLabel, "\n$1:").split("\n").map(cleanLine).filter(Boolean);
@@ -101,10 +107,12 @@ export function parseBillingText(source, formatAmount, fromImage = false) {
       loose.push("");
       if (section === "note") add("note", noteLines.join("\n").trim());
       pending = "";
-      const field = fieldForLabel.get(tag[1]);
-      const value = cleanLine(tag[2]);
+      const label = tag[1].replace(/\s/g, "");
+      const field = fieldForLabel.get(label);
+      const rawValue = cleanLine(tag[2]);
+      const value = field === "note" ? rawValue : rawValue.replace(edgeHints, "").trim();
       // Contact details or a generic account name inside a bank block still belong to that bank.
-      if (section === "bank" && (field === "ignore" || tag[1] === "名称")) continue;
+      if (section === "bank" && (field === "ignore" || label === "名称")) continue;
       section = field === "header" ? "invoice" : field;
       if (field === "bank" || field === "header") continue;
       if (field === "ignore") {
@@ -121,11 +129,15 @@ export function parseBillingText(source, formatAmount, fromImage = false) {
       }
     } else if (section === "note") {
       noteLines.push(line);
-    } else if (pending) {
-      if (pending !== "ignore") labelled(pending, line);
-      pending = "";
     } else if (section !== "bank") {
-      loose.push(line);
+      const value = line.replace(edgeHints, "").trim();
+      if (!value) continue;
+      if (pending) {
+        if (pending !== "ignore") labelled(pending, value);
+        pending = "";
+      } else {
+        loose.push(value);
+      }
     }
   }
   if (section === "note") add("note", noteLines.join("\n").trim());
