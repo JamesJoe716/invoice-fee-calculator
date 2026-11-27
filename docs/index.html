@@ -63,6 +63,7 @@
     .intro { margin-bottom: clamp(1.35rem,2.9vw,2.15rem); }
     h1 { font-size: clamp(2rem,3.2vw,2.8rem); line-height: 1.22; letter-spacing: -.045em; font-weight: 780; }
     .intro p { margin-top: .5rem; color: var(--muted); font-size: 1rem; }
+    .intro a { color: var(--accent); text-underline-offset: .2em; }
     .layout { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 1.5rem; align-items: start; }
     .entry-panel, .ticket, .billing-panel {
       min-width: 0; background: white; border: 1px solid var(--line); border-radius: 1.15rem;
@@ -181,6 +182,23 @@
     .billing-panel { margin-top: 1.5rem; padding: clamp(1.25rem,2.65vw,2rem); }
     .billing-panel h2 { font-size: 1.4rem; letter-spacing: -.025em; }
     .billing-panel header p { margin-top: .25rem; color: var(--muted); }
+    .billing-import {
+      margin-top: 1.15rem; padding: .85rem 1rem; background: #f3f8f3;
+      border: 1px solid #cddfd2; border-radius: .8rem;
+    }
+    .import-heading, .import-footer { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }
+    .import-heading label { font-weight: 650; }
+    .import-button {
+      flex: none; min-height: 2.5rem; padding: .35rem .8rem; color: var(--forest);
+      border: 1px solid #b5cfbd; background: #fff; border-radius: .5rem; font-size: .9rem; font-weight: 600;
+    }
+    .import-button:hover { background: var(--mint); }
+    .import-source {
+      width: 100%; display: block; min-height: 4.8rem; margin: .55rem 0 .4rem; padding: .6rem .75rem;
+      border: 1px solid #aab9af; border-radius: .55rem; resize: vertical; color: var(--ink); background: #fff;
+    }
+    .import-source:focus-visible { outline: 2px solid #46886f; outline-offset: 2px; }
+    .import-footer { align-items: baseline; color: var(--muted); font-size: .9rem; }
     .billing-layout {
       display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr);
       align-items: start; gap: clamp(1.25rem,3.4vw,2.5rem); margin-top: 1.2rem;
@@ -264,7 +282,7 @@
   <main class="wrap">
     <div class="intro">
       <h1>发票费用计算器</h1>
-      <p>输入金额试算费用，再填写并复制开票资料。</p>
+      <p>输入金额试算费用，也可以直接<a href="#billing-source">粘贴开票资料</a>自动填写。</p>
     </div>
     <noscript><p>请启用浏览器的 JavaScript，以便自动计算金额。</p></noscript>
     <div class="layout">
@@ -360,8 +378,20 @@
     <form class="billing-panel" id="billing-form" aria-labelledby="billing-title" autocomplete="off" novalidate>
       <header>
         <h2 id="billing-title" tabindex="-1">开票资料</h2>
-        <p>填写名称和税号，复制后发给开票人。</p>
+        <p>核对填写内容后，复制发给开票人。</p>
       </header>
+      <div class="billing-import">
+        <div class="import-heading">
+          <label for="billing-source">粘贴开票资料</label>
+          <button type="button" class="import-button" id="pick-billing-image">选择截图</button>
+          <input type="file" id="billing-image" accept="image/*" aria-label="开票截图" hidden>
+        </div>
+        <textarea class="import-source" id="billing-source" rows="2" spellcheck="false" aria-describedby="import-status" placeholder="在这里粘贴聊天文字或截图，自动识别名称、税号、品名和金额"></textarea>
+        <div class="import-footer">
+          <p id="import-status" role="status">文字和截图都在你的设备上识别。</p>
+          <button type="button" class="example" id="clear-billing-source" hidden>清空原文</button>
+        </div>
+      </div>
       <div class="billing-layout">
         <div class="billing-fields">
           <div class="billing-field">
@@ -624,6 +654,18 @@
       if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeRules();
     });
     render();
+  </script>
+  <script type="module">
+    import { enableBillingImport } from "./billing-import.js";
+    enableBillingImport({
+      calculator: form,
+      billingForm,
+      render,
+      formatAmount(value) {
+        const cents = parseCents(value);
+        return cents === null ? "" : money(cents, false);
+      }
+    });
   </script>
 </body>
 </html>

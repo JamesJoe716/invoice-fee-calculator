@@ -1,0 +1,11 @@
+Tesseract.js 7.0.0 and Tesseract.js-core 7.0.0
+Copyright the respective authors. Distributed under the Apache License, Version 2.0.
+https://github.com/naptha/tesseract.js
+https://github.com/naptha/tesseract.js-core
+
+English and Simplified Chinese LSTM models
+tesseract-ocr/tessdata_fast, commit 87416418657359cb625c412a48b6e1d6d41c29bd
+Distributed under the Apache License, Version 2.0. The model files are gzip-compressed here.
+https://github.com/tesseract-ocr/tessdata_fast
+
+See LICENSE.txt and the bundled JavaScript license notices in this directory.
